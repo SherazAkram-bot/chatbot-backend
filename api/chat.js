@@ -1,19 +1,18 @@
 export default async function handler(req, res) {
   const { message } = req.body;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+      "Authorization": `Bearer ${process.env.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}`,
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: message }]
+      inputs: message
     })
   });
 
   const data = await response.json();
-  const reply = data.choices[0].message.content;
+  const reply = data?.[0]?.generated_text || "Sorry, I couldn't generate a response.";
   res.status(200).json({ reply });
 }
