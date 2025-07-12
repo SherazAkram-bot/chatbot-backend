@@ -2,35 +2,34 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") return res.status(200).end();
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+  const { message, lang, history } = req.body;
+  const browserLang = lang || "en";
 
-  const { message } = req.body;
+  // Generate Shopify product list (or mock for now)
+  const productList = `
+- Smart Charger Pro — USB-C fast charger — $29.99
+- Wireless Earbuds — Waterproof, noise-canceling — $49.99
+- Scented Candle Set — Relaxing aroma — $19.99
+  `;
 
-  const promptContext = `
-You are a helpful and friendly customer support assistant for the Shopify store "Ecom Staff Testing".
+  const systemPrompt = `
+You are a friendly, helpful Shopify assistant for "Ecom Staff Testing".
 
-Your job is to help customers with:
--  Order questions, returns, and delivery
--  Product-specific details
--  Policy page answers (return & shipping)
--  Language-aware replies (use user's language)
-
+Your job:
+- Answer customer support queries about products, shipping, returns, or contact info
+- Pull from the current product list and policies below
+- Always be polite and natural — sound like a real human support rep
+- Respond in ${browserLang}
+  
 Store Info:
--  Shipping: We ship all orders within 3–5 business days via DHL.
--  Returns: Customers can return products within 14 days if unused and in original packaging.
--  Support: Reach us at support@ecomstaff.com
+- Shipping: 3–5 business days
+- Returns: 14 days if unused
+- Email: support@ecomstaff.com
 
-Product Info:
--  Smart Charger Pro – USB-C Fast Charging Adapter – $29.99
--  Scented Candle Set – Relaxing aroma for home – $19.99
--  Wireless Earbuds – Waterproof, noise-canceling – $49.99
-
-Always respond politely, never say you're an AI.
-Always act like a real human assistant from the store.
-If a user types in another language (e.g. Urdu, Arabic, Spanish), respond in the same language.
+Product List:
+${productList}
 `;
 
   try {
@@ -43,7 +42,8 @@ If a user types in another language (e.g. Urdu, Arabic, Spanish), respond in the
       body: JSON.stringify({
         model: "mistralai/mistral-7b-instruct",
         messages: [
-          { role: "system", content: promptContext },
+          { role: "system", content: systemPrompt },
+          ...(history || []),
           { role: "user", content: message }
         ],
         temperature: 0.7
@@ -54,7 +54,7 @@ If a user types in another language (e.g. Urdu, Arabic, Spanish), respond in the
     const reply = data?.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response.";
     res.status(200).json({ reply });
   } catch (error) {
-    res.status(500).json({ reply: "Something went wrong on the server." });
+    console.error("Chat error:", error);
+    res.status(500).json({ reply: "Server error. Try again later." });
   }
 }
-
